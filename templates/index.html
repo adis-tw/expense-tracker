@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monthly Expense Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>💰 Monthly Expense Tracker</h1>
+            <p class="subtitle">Track your expenses with custom date ranges and detailed analytics</p>
+        </header>
+
+        <!-- Time Period Management -->
+        <section class="card">
+            <div class="section-header">
+                <h2>Time Periods</h2>
+                <button class="btn btn-primary" onclick="showAddPeriodModal()">+ New Period</button>
+            </div>
+            <div id="periods-list" class="periods-grid"></div>
+        </section>
+
+        <!-- Selected Period Details -->
+        <div id="period-details" class="hidden">
+            <section class="card">
+                <div class="section-header">
+                    <h2 id="period-name">Period Details</h2>
+                    <div>
+                        <button class="btn btn-secondary" onclick="showAnalytics()">📊 Analytics</button>
+                        <button class="btn btn-success" onclick="exportToSheets()">📤 Export to Google Sheets</button>
+                        <button class="btn btn-danger" onclick="deleteCurrentPeriod()">🗑️ Delete Period</button>
+                    </div>
+                </div>
+                
+                <!-- Expense Heads Management -->
+                <div class="subsection">
+                    <div class="subsection-header">
+                        <h3>Expense Heads</h3>
+                        <button class="btn btn-sm btn-primary" onclick="showAddHeadModal()">+ Add Head</button>
+                    </div>
+                    <div id="expense-heads-list" class="heads-list"></div>
+                </div>
+
+                <!-- Expenses Entry -->
+                <div class="subsection">
+                    <div class="subsection-header">
+                        <h3>Add Expense</h3>
+                    </div>
+                    <form id="expense-form" class="expense-form">
+                        <select id="expense-head-select" required>
+                            <option value="">Select Expense Head</option>
+                        </select>
+                        <input type="number" id="expense-amount" step="0.01" placeholder="Amount" required>
+                        <input type="text" id="expense-description" placeholder="Description (optional)">
+                        <input type="date" id="expense-date" required>
+                        <button type="submit" class="btn btn-primary">Add Expense</button>
+                    </form>
+                </div>
+
+                <!-- Expenses List -->
+                <div class="subsection">
+                    <div class="subsection-header">
+                        <h3>Expenses</h3>
+                    </div>
+                    <div id="expenses-list" class="expenses-table-container">
+                        <table class="expenses-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Head</th>
+                                    <th>Amount</th>
+                                    <th>Description</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="expenses-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal-overlay" class="modal-overlay hidden" onclick="closeModals()">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3 id="modal-title"></h3>
+                <button class="modal-close" onclick="closeModals()">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body"></div>
+        </div>
+    </div>
+
+    <!-- Analytics Modal -->
+    <div id="analytics-modal" class="modal-overlay hidden" onclick="closeAnalytics()">
+        <div class="modal modal-large" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3>Analytics Dashboard</h3>
+                <button class="modal-close" onclick="closeAnalytics()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="analytics-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
