@@ -35,11 +35,33 @@ pip install -r requirements.txt
 
 ## Usage
 
-### Running the Application
+The application provides two interfaces:
+- **CLI Interface**: Command-line interface for terminal use
+- **Web Dashboard**: Browser-based interface with visualizations
+
+### Running the CLI Application
 
 ```bash
 python main.py
 ```
+
+### Running the Web Dashboard
+
+```bash
+python app.py
+```
+
+Then open your browser and navigate to:
+```
+http://localhost:5000
+```
+
+The web dashboard provides:
+- Visual overview of all time periods
+- Interactive charts for category breakdowns and daily trends
+- Easy expense entry through forms
+- Period comparison tools
+- Real-time analytics visualization
 
 ### Basic Workflow
 
@@ -91,10 +113,18 @@ python main.py
 ```
 .
 ├── main.py              # Main CLI application
+├── app.py               # Flask web application (dashboard)
 ├── tracker.py           # Core expense tracking functionality
 ├── models.py            # Data models (Expense, TimePeriod)
 ├── analytics.py         # Analytics and reporting functions
 ├── export.py            # Google Sheets export functionality
+├── templates/           # HTML templates for web dashboard
+│   ├── base.html        # Base template
+│   ├── dashboard.html   # Main dashboard page
+│   └── period_detail.html  # Period detail page
+├── static/              # Static files (CSS, JS)
+│   └── css/
+│       └── style.css    # Dashboard styles
 ├── requirements.txt     # Python dependencies
 ├── README.md           # This file
 └── .gitignore          # Git ignore file
@@ -168,6 +198,24 @@ To enable Google Sheets export:
 - google-auth-oauthlib >= 1.1.0
 - google-auth-httplib2 >= 0.1.1
 - python-dateutil >= 2.8.2
+- flask >= 2.3.0
+
+## Web Dashboard Features
+
+The web dashboard provides a user-friendly interface with:
+
+- **Dashboard Overview**: View all time periods at a glance with summary statistics
+- **Period Details**: Detailed view of each period with:
+  - Summary cards (total expenses, daily average, expense count)
+  - Interactive charts (category breakdown pie chart, daily trend line chart)
+  - Expense list with sorting
+  - Category breakdown details
+  - Top 5 expenses
+- **Period Comparison**: Compare two periods side-by-side
+- **Easy Data Entry**: Modal forms for creating periods and adding expenses
+- **Responsive Design**: Works on desktop and mobile devices
+
+Both the CLI and web dashboard share the same data file (`expense_data.json`), so you can use either interface interchangeably.
 
 ## Notes
 
@@ -176,6 +224,8 @@ To enable Google Sheets export:
 - All monetary values are stored using Python's `Decimal` for precision
 - The application automatically saves data after each operation
 - Google Sheets export requires internet connection and valid credentials
+- The web dashboard runs on `http://localhost:5000` by default
+- Both CLI and web dashboard can be used simultaneously with the same data
 
 ## License
 

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Expense Tracker{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1>💰 Expense Tracker</h1>
+            <div class="nav-links">
+                <a href="/">Dashboard</a>
+                <a href="#" onclick="showCreatePeriodModal()">New Period</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Create Period Modal -->
+    <div id="createPeriodModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('createPeriodModal')">&times;</span>
+            <h2>Create New Time Period</h2>
+            <form id="createPeriodForm">
+                <div class="form-group">
+                    <label for="period_name">Period Name (optional):</label>
+                    <input type="text" id="period_name" name="period_name" placeholder="e.g., January 2024">
+                </div>
+                <div class="form-group">
+                    <label for="start_date">Start Date:</label>
+                    <input type="date" id="start_date" name="start_date" required>
+                </div>
+                <div class="form-group">
+                    <label for="end_date">End Date:</label>
+                    <input type="date" id="end_date" name="end_date" required>
+                </div>
+                <div class="form-group">
+                    <label for="expense_heads">Expense Heads (one per line):</label>
+                    <textarea id="expense_heads" name="expense_heads" rows="5" required placeholder="Food&#10;Transportation&#10;Utilities&#10;Entertainment"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Create Period</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Expense Modal -->
+    <div id="addExpenseModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('addExpenseModal')">&times;</span>
+            <h2>Add Expense</h2>
+            <form id="addExpenseForm">
+                <input type="hidden" id="expense_period_index" name="period_index">
+                <div class="form-group">
+                    <label for="expense_date">Date:</label>
+                    <input type="date" id="expense_date" name="date" required>
+                </div>
+                <div class="form-group">
+                    <label for="expense_category">Category:</label>
+                    <select id="expense_category" name="category" required></select>
+                </div>
+                <div class="form-group">
+                    <label for="expense_description">Description:</label>
+                    <input type="text" id="expense_description" name="description" required>
+                </div>
+                <div class="form-group">
+                    <label for="expense_amount">Amount:</label>
+                    <input type="number" id="expense_amount" name="amount" step="0.01" min="0" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Add Expense</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function showCreatePeriodModal() {
+            document.getElementById('createPeriodModal').style.display = 'block';
+        }
+
+        function showAddExpenseModal(periodIndex, expenseHeads) {
+            document.getElementById('expense_period_index').value = periodIndex;
+            const categorySelect = document.getElementById('expense_category');
+            categorySelect.innerHTML = '';
+            expenseHeads.forEach(head => {
+                const option = document.createElement('option');
+                option.value = head;
+                option.textContent = head;
+                categorySelect.appendChild(option);
+            });
+            document.getElementById('addExpenseModal').style.display = 'block';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            const modals = document.getElementsByClassName('modal');
+            for (let modal of modals) {
+                if (event.target == modal) {
+                    modal.style.display = 'none';
+                }
+            }
+        }
+
+        // Create Period Form Handler
+        document.getElementById('createPeriodForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = {
+                period_name: document.getElementById('period_name').value || null,
+                start_date: document.getElementById('start_date').value,
+                end_date: document.getElementById('end_date').value,
+                expense_heads: document.getElementById('expense_heads').value.split('\n').filter(h => h.trim())
+            };
+
+            try {
+                const response = await fetch('/api/create_period', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    alert('Period created successfully!');
+                    closeModal('createPeriodModal');
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error creating period: ' + error.message);
+            }
+        });
+
+        // Add Expense Form Handler
+        document.getElementById('addExpenseForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = {
+                period_index: parseInt(document.getElementById('expense_period_index').value),
+                date: document.getElementById('expense_date').value,
+                category: document.getElementById('expense_category').value,
+                description: document.getElementById('expense_description').value,
+                amount: parseFloat(document.getElementById('expense_amount').value)
+            };
+
+            try {
+                const response = await fetch('/api/add_expense', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    alert('Expense added successfully!');
+                    closeModal('addExpenseModal');
+                    if (window.location.pathname.startsWith('/period/')) {
+                        location.reload();
+                    } else {
+                        location.reload();
+                    }
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error adding expense: ' + error.message);
+            }
+        });
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>
