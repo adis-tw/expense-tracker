@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+
+{% block title %}{{ period_name }} - Expense Tracker{% endblock %}
+
+{% block content %}
+<div class="period-detail-header">
+    <a href="/" class="back-link">← Back to Dashboard</a>
+    <h2>{{ period_name }}</h2>
+</div>
+
+<div id="loading" class="loading">Loading...</div>
+<div id="period-content" style="display: none;">
+    <div class="analytics-section">
+        <h3>Summary</h3>
+        <div class="summary-cards">
+            <div class="summary-card">
+                <div class="summary-label">Total Expenses</div>
+                <div class="summary-value" id="total-expenses">$0.00</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">Daily Average</div>
+                <div class="summary-value" id="daily-average">$0.00</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">Total Count</div>
+                <div class="summary-value" id="expense-count">0</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="charts-section">
+        <div class="chart-container">
+            <h3>Category Breakdown</h3>
+            <canvas id="categoryChart"></canvas>
+        </div>
+        <div class="chart-container">
+            <h3>Daily Trend</h3>
+            <canvas id="trendChart"></canvas>
+        </div>
+    </div>
+
+    <div class="expenses-section">
+        <div class="section-header">
+            <h3>Expenses</h3>
+            <button onclick="loadExpenses()" class="btn btn-secondary">Refresh</button>
+        </div>
+        <div id="expenses-list" class="expenses-list"></div>
+    </div>
+
+    <div class="category-breakdown-section">
+        <h3>Category Breakdown Details</h3>
+        <div id="category-breakdown" class="category-breakdown"></div>
+    </div>
+
+    <div class="top-expenses-section">
+        <h3>Top 5 Expenses</h3>
+        <div id="top-expenses" class="top-expenses"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const periodIndex = {{ period_index }};
+
+async function loadPeriodData() {
+    try {
+        const [analyticsResponse, expensesResponse] = await Promise.all([
+            fetch(`/api/period/${periodIndex}/analytics`),
+            fetch(`/api/period/${periodIndex}/expenses`)
+        ]);
+
+        const analytics = await analyticsResponse.json();
+        const expenses = await expensesResponse.json();
+
+        if (analyticsResponse.ok && expensesResponse.ok) {
+            displayAnalytics(analytics);
+            displayExpenses(expenses);
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('period-content').style.display = 'block';
+        } else {
+            document.getElementById('loading').innerHTML = 'Error loading data';
+        }
+    } catch (error) {
+        document.getElementById('loading').innerHTML = 'Error: ' + error.message;
+    }
+}
+
+function displayAnalytics(analytics) {
+    document.getElementById('total-expenses').textContent = '$' + analytics.total_expenses.toFixed(2);
+    document.getElementById('daily-average').textContent = '$' + analytics.daily_average.toFixed(2);
+    document.getElementById('expense-count').textContent = analytics.total_expense_count;
+
+    // Category Chart
+    const categoryData = analytics.category_breakdown;
+    const categoryLabels = Object.keys(categoryData);
+    const categoryValues = Object.values(categoryData).map(c => c.total);
+    const categoryColors = generateColors(categoryLabels.length);
+
+    const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+    new Chart(categoryCtx, {
+        type: 'doughnut',
+        data: {
+            labels: categoryLabels,
+            datasets: [{
+                data: categoryValues,
+                backgroundColor: categoryColors
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'right'
+                }
+            }
+        }
+    });
+
+    // Trend Chart
+    const trendData = analytics.daily_trend;
+    const trendLabels = Object.keys(trendData).sort();
+    const trendValues = trendLabels.map(date => trendData[date]);
+
+    const trendCtx = document.getElementById('trendChart').getContext('2d');
+    new Chart(trendCtx, {
+        type: 'line',
+        data: {
+            labels: trendLabels,
+            datasets: [{
+                label: 'Daily Expenses',
+                data: trendValues,
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    // Category Breakdown
+    const breakdownDiv = document.getElementById('category-breakdown');
+    breakdownDiv.innerHTML = '';
+    for (const [category, info] of Object.entries(categoryData).sort((a, b) => b[1].total - a[1].total)) {
+        const categoryCard = document.createElement('div');
+        categoryCard.className = 'category-card';
+        categoryCard.innerHTML = `
+            <div class="category-name">${category}</div>
+            <div class="category-amount">$${info.total.toFixed(2)}</div>
+            <div class="category-percent">${info.percentage.toFixed(1)}%</div>
+            <div class="category-count">${info.count} expenses</div>
+        `;
+        breakdownDiv.appendChild(categoryCard);
+    }
+
+    // Top Expenses
+    const topExpensesDiv = document.getElementById('top-expenses');
+    topExpensesDiv.innerHTML = '';
+    analytics.top_expenses.forEach((exp, index) => {
+        const expenseItem = document.createElement('div');
+        expenseItem.className = 'top-expense-item';
+        expenseItem.innerHTML = `
+            <span class="expense-rank">#${index + 1}</span>
+            <span class="expense-date">${exp.date}</span>
+            <span class="expense-category">${exp.category}</span>
+            <span class="expense-description">${exp.description}</span>
+            <span class="expense-amount">$${exp.amount.toFixed(2)}</span>
+        `;
+        topExpensesDiv.appendChild(expenseItem);
+    });
+}
+
+function displayExpenses(expenses) {
+    const expensesDiv = document.getElementById('expenses-list');
+    if (expenses.length === 0) {
+        expensesDiv.innerHTML = '<p class="empty-message">No expenses recorded yet.</p>';
+        return;
+    }
+
+    expensesDiv.innerHTML = '';
+    expenses.forEach(exp => {
+        const expenseItem = document.createElement('div');
+        expenseItem.className = 'expense-item';
+        expenseItem.innerHTML = `
+            <div class="expense-date">${exp.date}</div>
+            <div class="expense-category">${exp.category}</div>
+            <div class="expense-description">${exp.description}</div>
+            <div class="expense-amount">$${exp.amount.toFixed(2)}</div>
+        `;
+        expensesDiv.appendChild(expenseItem);
+    });
+}
+
+async function loadExpenses() {
+    try {
+        const response = await fetch(`/api/period/${periodIndex}/expenses`);
+        const expenses = await response.json();
+        if (response.ok) {
+            displayExpenses(expenses);
+        }
+    } catch (error) {
+        console.error('Error loading expenses:', error);
+    }
+}
+
+function generateColors(count) {
+    const colors = [];
+    const hueStep = 360 / count;
+    for (let i = 0; i < count; i++) {
+        const hue = i * hueStep;
+        colors.push(`hsl(${hue}, 70%, 60%)`);
+    }
+    return colors;
+}
+
+// Load data on page load
+loadPeriodData();
+</script>
+{% endblock %}

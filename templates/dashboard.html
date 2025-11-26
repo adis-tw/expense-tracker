@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Expense Tracker{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h2>Expense Tracker Dashboard</h2>
+    <p class="subtitle">Manage and analyze your monthly expenses</p>
+</div>
+
+{% if periods %}
+<div class="periods-grid">
+    {% for period in periods %}
+    <div class="period-card">
+        <div class="period-header">
+            <h3>{{ period.name }}</h3>
+            <span class="period-dates">{{ period.start_date }} to {{ period.end_date }}</span>
+        </div>
+        <div class="period-stats">
+            <div class="stat">
+                <span class="stat-label">Total Expenses</span>
+                <span class="stat-value">${{ "%.2f"|format(period.total_expenses) }}</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Expense Count</span>
+                <span class="stat-value">{{ period.expense_count }}</span>
+            </div>
+        </div>
+        <div class="period-actions">
+            <a href="/period/{{ period.index }}" class="btn btn-primary">View Details</a>
+            <button onclick="showAddExpenseModal({{ period.index }}, {{ period.expense_heads|tojson }})" class="btn btn-secondary">Add Expense</button>
+        </div>
+        <div class="expense-heads">
+            <strong>Categories:</strong>
+            <div class="tags">
+                {% for head in period.expense_heads %}
+                <span class="tag">{{ head }}</span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% if periods|length >= 2 %}
+<div class="comparison-section">
+    <h3>Compare Periods</h3>
+    <div class="comparison-controls">
+        <select id="compare_period1" class="form-control">
+            <option value="">Select Period 1</option>
+            {% for period in periods %}
+            <option value="{{ period.index }}">{{ period.name }}</option>
+            {% endfor %}
+        </select>
+        <select id="compare_period2" class="form-control">
+            <option value="">Select Period 2</option>
+            {% for period in periods %}
+            <option value="{{ period.index }}">{{ period.name }}</option>
+            {% endfor %}
+        </select>
+        <button onclick="comparePeriods()" class="btn btn-primary">Compare</button>
+    </div>
+    <div id="comparison-result" class="comparison-result"></div>
+</div>
+{% endif %}
+
+{% else %}
+<div class="empty-state">
+    <h3>No Time Periods Yet</h3>
+    <p>Create your first time period to start tracking expenses.</p>
+    <button onclick="showCreatePeriodModal()" class="btn btn-primary">Create Period</button>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function comparePeriods() {
+    const period1 = document.getElementById('compare_period1').value;
+    const period2 = document.getElementById('compare_period2').value;
+
+    if (!period1 || !period2) {
+        alert('Please select both periods to compare');
+        return;
+    }
+
+    if (period1 === period2) {
+        alert('Please select two different periods');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/compare?period1=${period1}&period2=${period2}`);
+        const data = await response.json();
+
+        if (response.ok) {
+            const resultDiv = document.getElementById('comparison-result');
+            const diff = data.difference;
+            const diffClass = diff.amount >= 0 ? 'positive' : 'negative';
+            
+            resultDiv.innerHTML = `
+                <div class="comparison-card">
+                    <div class="comparison-period">
+                        <h4>${data.period1.name}</h4>
+                        <p>Total: $${data.period1.total.toFixed(2)}</p>
+                        <p>Daily Avg: $${data.period1.daily_avg.toFixed(2)}</p>
+                        <p>Count: ${data.period1.count}</p>
+                    </div>
+                    <div class="comparison-diff ${diffClass}">
+                        <h4>Difference</h4>
+                        <p class="diff-amount">$${Math.abs(diff.amount).toFixed(2)}</p>
+                        <p class="diff-percent">${diff.percent_change >= 0 ? '+' : ''}${diff.percent_change.toFixed(1)}%</p>
+                    </div>
+                    <div class="comparison-period">
+                        <h4>${data.period2.name}</h4>
+                        <p>Total: $${data.period2.total.toFixed(2)}</p>
+                        <p>Daily Avg: $${data.period2.daily_avg.toFixed(2)}</p>
+                        <p>Count: ${data.period2.count}</p>
+                    </div>
+                </div>
+            `;
+        } else {
+            alert('Error: ' + data.error);
+        }
+    } catch (error) {
+        alert('Error comparing periods: ' + error.message);
+    }
+}
+</script>
+{% endblock %}
